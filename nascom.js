@@ -45,10 +45,10 @@ var phys_mem16;
 var phys_mem32;
 
 var canvas;
+var scale = 1;
 var ctx;
 var imageData;
 var imageDataData;
-var keyStates = [];
 
 var keyp = 0;
 var port0 = 0;
@@ -66,6 +66,7 @@ var replay_down = true;
 var serial_input = "";
 var serial_input_p = 0;
 
+var nmi_pending = false;
 function advance_replay() {
     replay_active = replay_active_go;
     sim_key(replay_line[replay_p], replay_down);
@@ -78,6 +79,8 @@ function advance_replay() {
 }
 
 function replay_kbd(str) {
+    if (str.length == 0)
+        return;
     replay_active = replay_active_go;
     replay_p = 0;
     replay_down = true;
@@ -91,7 +94,6 @@ function form_enter() {
     t1.value = ""; */
 }
 
-var nmi_pending = false;
 
 function nascom_unload() {
     if (!phys_mem32)
@@ -101,6 +103,16 @@ function nascom_unload() {
         serialized += phys_mem32[i] + ",";
     localStorage.setItem("memory", serialized);
     //console.log("memory="+serialized);
+}
+
+function nascom_save() {
+    if (!phys_mem32)
+        return;
+    var serialized = "";
+    for (i = 0; i < 16384; ++i)
+        serialized += phys_mem32[i] + ",";
+    localStorage.setItem("memory", serialized);
+    console.log("Save memory");
 }
 
 // XXX Shouldn't assume an int, but a char
@@ -120,6 +132,21 @@ function isxdigit(ch) { return hexdigitValue(ch) != -1; }
 
 var fileIOOk = false;
 
+function start_repo_program() {
+    var program =  document.getElementById("LibProg").value;
+    console.log("Start " + program);
+
+    serial_input = repo[program];
+    serial_input_p = 0;
+    z80_reset();
+// for BASIC
+//    replay_kbd("j\n\ncload\n");
+//    led_off_str = "run\n";
+// for M.C
+    replay_kbd("R\n");
+    led_off_str = "E1000\n";
+}
+
 function start_keys() {
     serial_input = repo['KEYS.CAS'];
     serial_input_p = 0;
@@ -129,11 +156,20 @@ function start_keys() {
 }
 
 function nascom_load(val) {
+    console.log("Restore memory");
     if (!phys_mem32)
         return;
     var aval = val.split(",");
     for (i = 0; i < 16384; ++i)
         phys_mem32[i] = parseInt(aval[i]);
+}
+
+
+// Run when you navigate away from jsnascom.html
+// Could call nascom_save() but that might not be what the
+// user wants, so leave that as an explicit action ("save state" button)
+function nascom_unload(val) {
+    console.log("Bye bye");
 }
 
 function read_hex(s, p, n) {
@@ -229,11 +265,21 @@ function load_ihex(s, memory) {
 
     if (p == null || p > s.length)
         alert("load error");
+	
+/*
     else {
         z80_reset();
         replay_kbd("E"+(start_addr|0).toString(16)+"\n");
     }
+*/
 }
+
+function typeE1000() {
+    
+    z80_reset();
+    replay_kbd("E1000\n");
+}
+
 
 function ui_ihex_load() {
     var reader = new FileReader();
@@ -245,6 +291,18 @@ function ui_ihex_load() {
 
     // Read in the image file as a data URL.
     reader.readAsBinaryString(document.getElementById('load_ihex').files[0]);
+}
+
+// Update an LED in the UI
+function ui_led(id,wdata,mask) {
+    if (document.getElementById(id)) {
+        var x = document.getElementById(id)
+        if ((wdata & mask) ) {
+            x.setAttribute("src", "red25.png");
+        } else {
+            x.setAttribute("src", "grey25.png");
+        }
+    }
 }
 
 function nascom_init() {
@@ -318,6 +376,10 @@ function nascom_init() {
 
     if (document.getElementById("reset"))
         document.getElementById("reset").onclick = z80_reset;
+        //document.getElementById("reset").onclick = ui_reset;
+
+    if (document.getElementById("nmi"))
+        document.getElementById("nmi").onclick = z80_nmi;
 
     if (document.getElementById("clear"))
         document.getElementById("clear").onclick = nascom_clear;
@@ -402,6 +464,7 @@ function nascom_init() {
     }
 
     z80_init();
+    //fdc_init();
 
     var ea = 64 * 1024;
     phys_mem   = new ArrayBuffer(ea);
@@ -434,6 +497,16 @@ function nascom_init() {
     run();
 }
 
+
+// Restart with clear memory and default ROMs
+function ui_cold_start() {
+    clear_ram_default_rom()
+    z80_reset();
+}
+
+function ui_select_rom() {
+    ui_reset();
+}
 function nascom_clear() {
     for (i = 0x800; i < 0xE000; i++)
         memory[i] = 0;
@@ -489,7 +562,7 @@ function sim_key(ch, down) {
     shifted = 0;
 
     if (row != -1) {
-        //console.log("key "+(down?"down":"up")+" at row "+row+" col "+bit);
+        console.log("key "+(down?"down":"up")+" at row "+row+" col "+bit);
         if (down) {
             keym[row] |= 1 << bit;
             keym[0] |= shifted << 4;
@@ -602,6 +675,7 @@ function frame() {
     tstates = 0;
 
     z80_do_opcodes();
+    //ui_led("led_halt", z80_halted(), 1);
 
     if (nmi_pending) {
         nmi_pending = false;
@@ -619,10 +693,8 @@ function frame() {
 }
 
 function run() {
-
     // if (!running) return;
     frame();
-
     setTimeout(run, 20);
 }
 
@@ -674,10 +746,15 @@ function readport(port) {
 }
 
 function writeport(port, value) {
+	var flag
+	
     port &= 255;
-
+	
+/*
     if (port != 0 || (value & ~31) != 0)
         console.log("writeport "+port+","+value);
+*/
+
 
     if (port == 0) {
         /* KBD */
@@ -735,28 +812,43 @@ function writeport(port, value) {
 
         if ((tape_led_last ^ value) & 0x10) {
             tape_led_last = value & 0x10
-            if (document.getElementById("io"))
-                document.getElementById("io").value = "port 0 tape: " + tape_led;
 
-            if (document.getElementById("led0_tape")) {
-                var x = document.getElementById("led0_tape");
+            if (document.getElementById("io"))
+                document.getElementById("io").value += "port 0 tape: " + tape_led_last + "\n";
+            ui_led("led_tape", tape_led, tape_led);
+
+
+            if (document.getElementById("led_tape")) {
+                var x = document.getElementById("led_tape");
                 if (tape_led_last) {
-                    x.setAttribute("src", "red.png");
+                    x.setAttribute("src", "red25.png");
                 } else {
-                    x.setAttribute("src", "grey.png");
+                    x.setAttribute("src", "grey25.png");
                 }
-            }
-	}
+            }			
+	    }
     }
 
     if (port == 1) {
         console.log("serial out " + value);
+        if ( document.getElementById("io")){			
+			// If tape LED on convert from binary to hex
+            if ( !tape_led_last ){
+              document.getElementById("io").value += String.fromCharCode( value&0x7F );        
+			} else{
+			  document.getElementById("io").value += value.toString(16)+",";					
+			}
+		}	
     }
 
     if (port == 10) {
+/*
         if (document.getElementById("io"))
             document.getElementById("io").value = "port 10:" + value;
-
+*/
+		port10_LED( value )
+		
+/*
         if (document.getElementById("led1")) {
             var x = document.getElementById("led1");
 
@@ -793,6 +885,7 @@ function writeport(port, value) {
               x.setAttribute("src", "red.png");
           }
       }
+	  */
     }
 }
 
@@ -801,12 +894,10 @@ function writebyte(addr, val) {
 }
 
 function writebyte_internal(addr, val) {
-    /* Optimize for the common case */
+    // Optimize for the common case 
     if (0xC00 <= addr && addr < 0xE000) {
-
         // General purpose memory
         memory[addr] = val;
-
     } else if (0x800 <= addr && addr < 0xC00) {
         // Framebuffer
 
@@ -823,7 +914,9 @@ function writebyte_internal(addr, val) {
     }
 }
 
+
 var char_height = 15; // PAL=12 , NTSC = 14 ?? (I think that's should be 13/15)
+
 function drawScreenByte(addr, val) {
     var x = (addr & 63) - 10;
     var y = ((addr >> 6) + 1) & 15;
@@ -836,8 +929,13 @@ function drawScreenByte(addr, val) {
         ctx.drawImage(rom_font,
                   0, 16*val,            // sx,sy
                   8, char_height,       // sWidth, sHeight
-                  x*8,y*char_height,    // dx,dy
-                  8, char_height);      // dWidth, dHeight
+
+//                  x*8,y*char_height,    // dx,dy
+//                  8, char_height);      // dWidth, dHeight
+
+
+                  x*8*scale,y*char_height*scale,    // dx,dy
+                  8*scale,    char_height*scale );      // dWidth, dHeight
     } else
         console.log("Oh no, it would appear what drawScreenByte is called "
                     + "before all of the necessary resources are defined");
@@ -876,4 +974,20 @@ function nasEvtUp(evt) {
 function nasCodeUp(charCode) {
     //console.log("nasEvtDn "+evt.target.textContent);
     nascomCharCode(charCode, false);
+}
+
+
+function tapeCopyToClipboard(){
+	
+	var r = document.createRange();
+	var id = 'io'
+	r.selectNode(document.getElementById(id));
+	window.getSelection().removeAllRanges();
+	window.getSelection().addRange(r);
+	document.execCommand('copy');
+	window.getSelection().removeAllRanges();
+}
+
+function tapeClear(){
+	document.getElementById('io').value = ""
 }

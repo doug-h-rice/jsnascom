@@ -4,7 +4,7 @@
 
 <!--    JSNascom: A Nascom 2 emulator in JavaScript
         Copyright (C) 2013 Tommy Thorn
-
+         
         Contact details: <nascomhomepage@thorn.ws>
 
         based on
@@ -30,9 +30,14 @@
         Lancs PR6 9NE UNITED KINGDOM -->
 
 <head>
-<title>JavaScript Nascom 2 Emulator 0.2</title>
+<title>JavaScript Nascom 2 Emulator 0.2a </title>
 
-<a href="https://github.com/tommythorn/jsnascom"><img style="position: absolute; top: 0; right: 0; border: 0;" src="https://s3.amazonaws.com/github/ribbons/forkme_right_green_007200.png" alt="Fork me on GitHub"></a>
+
+<!--
+
+<a href="https://github.com/tommythorn/jsnascom">
+<img style="position: absolute; top: 0; right: 0; border: 0;" src="https://s3.amazonaws.com/github/ribbons/forkme_right_green_007200.png" alt="Fork me on GitHub"></a>
+-->
 
 <!-- Tricks and help from
  http://matt.might.net/articles/how-to-native-iphone-ipad-apps-in-javascript/
@@ -58,9 +63,9 @@
  <!-- <meta name="viewport" content="user-scalable=no,initial-scale=0.8333" /> -->
 
  <style>
-body {
- margin: 0px ;
-}
+   body {
+   margin: 0px ;
+   }
 </style>
 <script>
 // To be called when there's a move event on the body itself:
@@ -78,34 +83,90 @@ function BlockMove(event) {
 <script type="text/javascript" src="nascom.js"></script>
 </head>
 <body onload="nascom_init();" onUnload="nascom_unload();">
-<h1>Nascom 2 JavaScript emulator 0.2</h1>
-<table border="0">
+<h1>Nascom 2 JavaScript emulator 0.2a</h1>
+<table border="1">
   <tr valign="top"><td>
-
     <!-- <h1>Nascom 2</h1> -->
-    <canvas id="screen" width="384" height="240"></canvas>
+	<button onclick="toggleSize()" > Screen Size </button>
+	type keys here: 
+	<textarea id="ip_key" rows=1 cols=4 onkeyup="key()" onfocus="ungrabKeys()"></textarea>- limited<br>
+	<textarea id="crib" rows=1 cols=4  onfocus="toggleCrib0()" readOnly  >crib:
+O A AA	
+T 1000 1010
+  1000 EF 48 45 4C 4C 4F 20 57   oHELLO W
+  1008 4F 52 4C 44 20 00 DF 5B   ORLD ._[
+E1000    
+M 0BCA
+  0BCA 20 ,H,E,L,L,O, ,W,O,R,L,D , , ,!
+  0BD8 20
+NAS-SYS3 crib:-
+#C7 START Reset computer  
+#CF RIN Obtain an input character in the A register. 
+#DF 5B MRET - return to NAS-SYS
+#DF 5D TDEL - wait for a second.
+#E7 BRKPT store and display registers & return to NAS-SYS3
+#EF 48 00  PRS print nul terminated string
+#F7 ROUT  output character in A register
+    
+P
+S 1000
+1000 4802   1001 0048   0000 0031   0000 0031   0000 0031   FF00 FEF1   00 0000 0000 
+
+1000 4802   1002 DA00   0000 0031   0000 0031   0000 0031   FFFF 31E0   00 0000 0000 
+	
+	</textarea>	<button id="cribButton" onclick="toggleCrib0()" > Crib Size </button>
+<br>    
+<!--
+	<button onclick='replay_kbd( "\n" ); grabKeys() ; ' > enter </button>	
+	<button onclick='replay_kbd( "\b" ); grabKeys() ; ' > bs </button>	
+-->
+    <canvas id="screen" width="384" height="240"   onclick='grabKeys()'  ></canvas>
+	<BR>
+
   <td>
     <!-- KBD:  <input id="t1" autocapitalize="off" value="" size=6 onchange="form_enter();"><br> -->
-    <button id="reset">Reset</button><br>
+    <button id="reset">Reset</button>
+    <button id="nmi">NMI</button>
     <button id="clear">Clear memory and reset</button><br>
     <button id="save">Save state</button><br>
+
+    TAPE: <img id="led_tape" src=grey25.png>
+    HALT: <img id="led_halt" src=grey25.png><br>
+	
     <button id="keys">Start Keys of Kraal</button><br>
     Load NAS:       <input id="load_nas"      type="file"/><br>
     Load from tape: <input id="serial_input"  type="file"/><br>
     Save to tape:   <input id="serial_output" type="file"/><br>
-    Load Intel Hex: <input id="load_ihex"     type="file"/> <button id="reload">RELOAD</button><br>
+    Load Intel Hex: <input id="load_ihex"     type="file"/>
+	<button id="reload">RELOAD</button><br>
+	 
+	<button onclick="typeE1000()" > E1000 </button><br>
+	
     Docs:<br>
     <a href="http://www.nascomhomepage.com/pdf/Nassys3.pdf">NAS-SYS 3</a>
-    <a href="http://www.nascomhomepage.com/asm/Nap.txt">Nap</a><br>
-    <textarea id="io"></textarea><br>
+
+    <a href="http://www.nascomhomepage.com/asm/Nap.txt">NASCOM assembler package (Nap</a><br>
+    <textarea id="io" rows=7 cols=50 ></textarea><br>
+	<button onclick="tapeClear()" >clear</button>
+	<button onclick="tapeCopyToClipboard()" >copy To Clipboard</button><BR>
+	Use cmds "X32", "T 0 100 0 0 1" to output to IO and "N" reset. 
+	Copy output to a text file with .nas extension so it can be reloaded.<br>	
+    
+<!--
     PORT 0 TAPE:
     <img id="led0_tape" src=grey.png><br>
+-->
     PORT 0xA:
-    <img id="led4" src=red.png>
-    <img id="led3" src=red.png>
-    <img id="led2" src=red.png>
-    <img id="led1" src=red.png>
+	<canvas id="myCanvas" width="165" height="25" style="border:1px solid #000000;"></canvas>
+
 </table>
+<h2>Notes:</h2>
+<P>Use cmds "X32", "T 0 100 0 0 1" to output to Tape and "N" reset. Copy output in Tape to a text file with .nas extension. It can be reloaded.<P>
+<P>If tape led is on convert from binary to hex, so W and T commands are okay. </P>
+<img src=keyboard.png ><P > 
+
+<script type="text/javascript" src="nascom2a.js"></script>
+
 
 <h2>Help needed (2013-12-18)</h2>
 <ul>
@@ -127,5 +188,21 @@ function BlockMove(event) {
 <li>Implement saving.
 <li>Much better Z80 implementation (asm.js aware for bonus points).
 </ul>
+<BR>
+
+<h2>Updates (2022-11-16)</h2>
+
+writes to port 1 are logged to textarea. If Tape LED on convert from binary to hex.
+
+
+X32 outputs to Tape , log this to a text area.
+T start end 0 0 1
+
+N
+
+Tape options:-
+
+Keep as a string
+
 </body>
 </html>
