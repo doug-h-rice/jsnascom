@@ -9,6 +9,11 @@ http://ccgi.dougrice.plus.com/cgi-bin/wiki.pl?Nascom_2_Notes has some notes abou
 
 https://www.dougrice.co.uk/cgi-bin/wiki.pl?Nascom_2_Notes has some notes about using SDCC to generate C code.
 
+An updated version is at:
+
+https://www.dougrice.co.uk/dev/nascom2/JavaScriptNascom2/jsnascom.html
+
+
 == original
 
                                JSNascom
