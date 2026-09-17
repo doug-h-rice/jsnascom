@@ -1,0 +1,41 @@
+
+== news
+
+13/22/2022
+
+http://ccgi.dougrice.plus.com/cgi-bin/wiki.pl?Nascom_2_Notes has some notes about using SDCC to generate C code.
+
+17/09/2026 ccgi.dougrice.plus.com and www.dougrice.plus.com have moved to www.dougrice.co.uk
+
+https://www.dougrice.co.uk/cgi-bin/wiki.pl?Nascom_2_Notes has some notes about using SDCC to generate C code.
+
+== original
+
+                               JSNascom
+
+                   Nascom 2 emulator in Javascript
+
+In brief, the minimal goal is to be able to fully support all the
+Nascom 2 software on nascomhomepage.com which would run on an standard
+Nascom 2 (except for a memory extension).
+
+The Z80 emulator is borrowed from JSSpeccy, but the rest
+has be written from scratch.
+
+Current features:
+* Emulates: Z80, RAM, ROM, display, keyboard(*), serial IO
+* Loading of NAS files as well as "tapes"
+* Saving to tape
+* [Persistent state currently broken]
+
+(*) Keyboard support is interesting for a couple of reasons. Since
+there isn't a perfect mapping between "standard" PC 101 keyboards and
+the Nascom keyboard, for some applications it may be more appropriate
+to treat the keys more "physically". For example, shift-0 is ')' on
+the US version of the PC 101 keyboard, where it's the "up-arrow" on
+the Nascom, taking the ASCII code of the caret '^'.  Generally for
+games the physical layout would make more sense.
+
+This is work in progress and contributions are most welcome.
+
+Tommy Thorn
